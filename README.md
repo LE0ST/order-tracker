@@ -188,11 +188,11 @@ The test suite covers:
 
 ## Homework 4 Reference Answers
 
-| Question | Topic | Verified Answer |
+| Question | Context / Telemetry Evidence | Verified Answer |
 | :--- | :--- | :--- |
-| **Q1** | Health Check Return Value | `{"status":"ok"}` |
-| **Q2** | Metric HTTP Status Code (First Lookup) | `200` |
-| **Q3** | Grafana Metric HTTP Status Code (Second Lookup) | `404` |
-| **Q4** | 5xx Alert State in Grafana | `Normal` (or `Normal (NoData)`) |
-| **Q5** | Agent Response (Exact Last Line) | `Understood. I’ll investigate Order Tracker incidents, identify the cause, and report findings and remediation. This session has read-only filesystem access, so I can inspect the service but cannot apply changes.` |
-| **Q6** | Root Cause of the Incident | **Option A**: *The express delivery date calculation tried to use a day that does not exist in that month.* |
+| **Q1** | What does the health check return?<br>• Endpoint: `GET /healthz` (`http://localhost:8000/healthz`) | `{"status":"ok"}` |
+| **Q2** | Which HTTP status code does the metric record for the successful lookup?<br>• Metric: `http_requests_total{status_code="200", route="/api/orders/{order_id}"}` | `200` |
+| **Q3** | Which HTTP status code does the metric show in Grafana for the second lookup?<br>• Metric: `http_requests_total{status_code="404", route="/api/orders/{order_id}"}` | `404` |
+| **Q4** | What state does Grafana show for the 5xx alert?<br>• Alert Rule: `OrderTracker5xxResponses` | `Normal` (state: `Normal (NoData)`) |
+| **Q5** | What did the agent respond? Include the last line from its answer.<br>• Evidence: `incident-response/incidents/inc-20261006-002153-d6d6ae/agent-final.txt` | `Understood. I’ll investigate Order Tracker incidents, identify the cause, and report findings and remediation. This session has read-only filesystem access, so I can inspect the service but cannot apply changes.` |
+| **Q6** | What was the root cause of the incident?<br>• Location: `app/main.py` (function `order_detail`)<br>• Failure: `placed_at.replace(day=placed_at.day + 2)`<br>• Fix: `placed_at + timedelta(days=2)` | **Option A**: *The express delivery date calculation tried to use a day that does not exist in that month.* |
