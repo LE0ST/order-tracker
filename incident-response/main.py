@@ -37,6 +37,25 @@ RESPONDER_ALLOW_DANGEROUS_BYPASS = os.getenv("RESPONDER_ALLOW_DANGEROUS_BYPASS",
 # Explicit allowlist of alert names permitted for write remediation (if enabled by policy)
 ALLOWED_WRITE_ALERTS = {"OrderTracker5xxResponses"}
 
+
+def determine_sandbox_mode(alert_name: str, is_test_alert: bool) -> tuple[str, list[str]]:
+    """
+    Determine the sandbox mode and CLI arguments based on security policy.
+    Defaults to read-only mode. Write remediation is explicitly gated,
+    and dangerous bypass is disabled by default.
+    """
+    if is_test_alert:
+        return "read-only", ["-s", "read-only"]
+
+    can_write = RESPONDER_ALLOW_WRITE_REMEDIATION and (alert_name in ALLOWED_WRITE_ALERTS)
+    if can_write:
+        if RESPONDER_ALLOW_DANGEROUS_BYPASS:
+            return "workspace-write-bypassed", ["-s", "workspace-write", "--dangerously-bypass-approvals-and-sandbox"]
+        return "workspace-write", ["-s", "workspace-write"]
+
+    return "read-only", ["-s", "read-only"]
+
+
 # Locate Codex executable
 NATIVE_CODEX = Path(r"C:\Users\RENEC\AppData\Roaming\npm\node_modules\@openai\codex\node_modules\@openai\codex-win32-x64\vendor\x86_64-pc-windows-msvc\bin\codex.exe")
 if NATIVE_CODEX.exists():
@@ -232,16 +251,9 @@ Instructions:
 """
     else:
         # REAL PRODUCTION INCIDENT
-        # Security Gating: Write-capable remediation is disabled by default.
-        can_write = RESPONDER_ALLOW_WRITE_REMEDIATION and (alert_name in ALLOWED_WRITE_ALERTS)
+        sandbox_mode, sandbox_args = determine_sandbox_mode(alert_name, is_test_alert=False)
+        can_write = sandbox_mode.startswith("workspace-write")
         if can_write:
-            if RESPONDER_ALLOW_DANGEROUS_BYPASS:
-                sandbox_mode = "workspace-write-bypassed"
-                sandbox_args = ["-s", "workspace-write", "--dangerously-bypass-approvals-and-sandbox"]
-            else:
-                sandbox_mode = "workspace-write"
-                sandbox_args = ["-s", "workspace-write"]
-
             task_instructions = f"""Your Task:
 1. Investigate the root cause of the 5xx server error on the affected endpoint in the Order Tracker codebase at {REPO_ROOT} (specifically app/main.py).
    The application log reports: "Error looking up order express-1002: day is out of range for month".
@@ -254,8 +266,6 @@ Instructions:
 5. Conclude your response with a single clear final summary line stating the root cause."""
         else:
             # Default safe production mode: READ-ONLY investigation and diagnosis
-            sandbox_mode = "read-only"
-            sandbox_args = ["-s", "read-only"]
             task_instructions = f"""Your Task:
 1. Investigate the root cause of the 5xx server error on the affected endpoint in the Order Tracker codebase at {REPO_ROOT} (specifically app/main.py).
    The application log reports: "Error looking up order express-1002: day is out of range for month".

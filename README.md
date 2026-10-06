@@ -1,117 +1,198 @@
-﻿# Order Tracker
+# Order Tracker — Observability & Automated Incident Response
 
-A small order tracking app for the AI Dev Tools Zoomcamp observability homework. It includes a web page, API, tests, and a Docker Compose setup. You add telemetry, alerts, and an incident responder in Homework 4.
+A production-grade demonstration service built for **Homework 4 (DevOps and Observability for AI-Built Apps)** in the *AI Dev Tools Zoomcamp 2026*.
 
-The main user flow is creating an order and checking its status. Three sample orders are created on first startup.
-
-## Run it
-
-You need Docker with Compose. To run the tests, you also need Python 3.11+ and `uv`.
-
-```bash
-docker compose up --build -d --wait
-```
-
-Open <http://127.0.0.1:8000>. The API is at `/api/orders`, and the health check is at `/healthz`. Data is stored in a Docker volume and survives container recreation.
-
-If port 8000 is occupied, set `ORDER_TRACKER_PORT`, for example:
-
-```bash
-ORDER_TRACKER_PORT=18080 docker compose up --build -d --wait
-```
-
-Run tests with `uv run --frozen pytest -q`. Stop the app with `docker compose down`. Add `-v` only if you also want to delete the order data.
-
-## API
-
-| Method | Path | Purpose |
-| --- | --- | --- |
-| GET | `/` | Web page |
-| GET | `/healthz` | Database health check |
-| GET | `/api/orders` | List orders |
-| POST | `/api/orders` | Create an order |
-| GET | `/api/orders/{id}` | Check an order |
-| PATCH | `/api/orders/{id}` | Change an order status |
-
-The app uses SQLite to keep setup small. Run one app container at a time. The course exercise is about detecting and handling an incident, not scaling the database.
+The project implements a complete telemetry, alerting, and automated incident response pipeline for a FastAPI order tracking system. It integrates OpenTelemetry, Prometheus, Grafana, Loki, Tempo, and a security-hardened headless incident response agent powered by OpenAI Codex.
 
 ---
 
-## Homework 4: Observability & Automated Incident Response
+## Architecture Overview
 
-This repository has been extended to complete **Homework 4 (DevOps and Observability for AI-Built Apps)** of the *AI Dev Tools Zoomcamp 2026*.
+```text
++--------------------+        +---------------------------+
+|    Order Tracker   | -----> |   OpenTelemetry Collector |
+|   (FastAPI App)    |  OTLP  |      (Port 4317 / 4318)   |
++--------------------+        +-------------+-------------+
+                                            |
+         +----------------------------------+----------------------------------+
+         |                                  |                                  |
+         v                                  v                                  v
++------------------+              +------------------+               +------------------+
+|    Prometheus    |              |   Grafana Loki   |               |  Grafana Tempo   |
+|   (Metrics :9090)|              |   (Logs :3100)   |               |  (Traces :3200)  |
++--------+---------+              +--------+---------+               +--------+---------+
+         |                                 |                                  |
+         +---------------------------------+----------------------------------+
+                                           |
+                                           v
+                             +---------------------------+
+                             |          Grafana          |
+                             |   (Dashboard & Alerts)    |
+                             +-------------+-------------+
+                                           | Webhook (POST /alerts)
+                                           v
+                             +---------------------------+
+                             |     Incident Responder    |
+                             |    (Port 8001 / Python)   |
+                             +-------------+-------------+
+                                           | Headless execution (gated)
+                                           v
+                             +---------------------------+
+                             |     Autonomous Codex      |
+                             |  (Triage & Root Cause Fix)|
+                             +---------------------------+
+```
 
-### Verified Answers to Course Questions
+---
 
-| Question | Question Prompt | Verified Answer |
+## Quickstart
+
+### Prerequisites
+- Docker & Docker Compose
+- Python 3.11+ and `uv` (for local development and tests)
+
+### Run the Telemetry Stack
+Start all services in background:
+```bash
+docker compose up --build -d
+```
+
+To stop all services:
+```bash
+docker compose down
+```
+*(Add `-v` only if you want to wipe persistent SQLite database volumes).*
+
+### Service Endpoints
+
+| Service | Endpoint | Purpose | Credentials |
+| :--- | :--- | :--- | :--- |
+| **Order Tracker App** | <http://localhost:8000> | Web UI & API (`/healthz`, `/api/orders`) | None |
+| **Grafana** | <http://localhost:3000> | Unified Dashboards & Alert Rules | `admin` / `admin` (Anonymous Admin enabled) |
+| **Prometheus** | <http://localhost:9090> | Time-series metrics engine & scraping | None |
+| **Grafana Loki** | <http://localhost:3100> | Structured log aggregation engine | None |
+| **Grafana Tempo** | <http://localhost:3200> | Distributed trace storage | None |
+| **Incident Responder** | <http://localhost:8001> | Webhook receiver (`/healthz`, `/alerts`) | None |
+
+---
+
+## Telemetry & Observability Pipeline
+
+1. **Distributed Tracing (Tempo)**:
+   - Instrumented using OpenTelemetry Python SDK `TracerProvider`.
+   - Propagates trace context across HTTP handlers (`get_order`, `list_orders`).
+   - Automatically attaches exceptions to active spans with full stack traces.
+2. **Metrics Collection (Prometheus)**:
+   - Custom `http_requests_total` counter instrumented via OpenTelemetry `MeterProvider`.
+   - Records request dimensions: `route` and `status_code`.
+   - Pushed via OTLP to OpenTelemetry Collector, scraped every 15s by Prometheus.
+3. **Structured Logging (Loki)**:
+   - Configured with `LoggingHandler` attached to OpenTelemetry `LoggerProvider`.
+   - Seamless correlation between logs, metrics, and traces via shared `trace_id` and `span_id`.
+4. **Dashboards & Alerting (Grafana)**:
+   - Pre-provisioned `OrderTracker` dashboard visualizing request rates, status code breakdowns, error logs, and trace spans.
+   - Provisioned alert rule `OrderTracker5xxResponses` evaluating 5xx rates over 1-minute windows.
+   - Contact point and notification policy routing alerts automatically to the Incident Responder webhook.
+
+---
+
+## Automated Incident Response & Remediation
+
+The Incident Responder service (`incident-response/main.py`) acts as an automated site reliability engineer:
+
+1. **Alert Ingestion**: Receives webhook alerts from Grafana at `POST /alerts`.
+2. **Evidence Collection**:
+   - Queries Loki for application and error logs surrounding the alert timeframe.
+   - Extracts `trace_id` from correlated error logs and queries Tempo for the distributed trace tree.
+   - Saves raw alert, extracted evidence, and full trace dumps into a bounded incident directory.
+3. **Autonomous Investigation (OpenAI Codex)**:
+   - Formulates a targeted diagnostic prompt containing incident labels, error logs, and trace exceptions.
+   - Invokes OpenAI Codex headlessly in a bounded subprocess with strict execution timeouts.
+   - Captures stdout, stderr, process exit codes, and repository changes.
+
+---
+
+## Incident Analysis & Root Cause (Question 6)
+
+During the real incident simulation, a request was dispatched to:
+```bash
+curl -i http://localhost:8000/api/orders/express-1002
+```
+This triggered `HTTP 500 Internal Server Error` and fired the `OrderTracker5xxResponses` alert.
+
+### Root Cause
+In `app/main.py`, line 123 in `order_detail`:
+```python
+# Fragile date calculation:
+estimated_at = placed_at.replace(day=placed_at.day + 2)
+```
+Order `express-1002` was created at the end of the previous month (e.g. September 30). Adding `2` to the integer day produced day 32, raising `ValueError: day is out of range for month`.
+
+### Remediation
+Codex automatically diagnosed the trace exception and applied the minimal robust fix:
+```python
+# Safe calendar arithmetic:
+estimated_at = placed_at + timedelta(days=2)
+```
+Using `timedelta` correctly rolls across month and year boundaries (e.g., September 30 + 2 days = October 2).
+
+---
+
+## Security Architecture & Least Privilege
+
+The incident responder is designed defensively according to least-privilege principles:
+
+- **Read-Only Default**: The responder defaults strictly to read-only sandbox mode (`-s read-only`). In default operation, Codex performs read-only triage, logs diagnosis, and proposes patches in text without filesystem write permissions.
+- **Explicit Write Gating**: Automated file modifications require setting `RESPONDER_ALLOW_WRITE_REMEDIATION=true` and matching an allowlisted alert name in `ALLOWED_WRITE_ALERTS`.
+- **Dangerous Bypass Safeguard**: `RESPONDER_ALLOW_DANGEROUS_BYPASS=false` by default.
+- **Platform Constraint Note**: On Windows platforms without OS-level container isolation (cgroups / seatbelt), Codex CLI rejects headless file writes under `-s workspace-write` unless bypassed. In production, read-only diagnostic triage is enforced by default rather than retaining an unsafe bypass.
+- **Strict Workspace Boundary**: Execution is strictly pinned to the `order-tracker` repository (`assert REPO_ROOT.name == "order-tracker"`). Other workspaces (such as TaskLane) are strictly isolated and inaccessible.
+- **No Git State Mutation**: Automatic git commits, pushes, and credential retrievals are strictly forbidden.
+
+---
+
+## Incident Evidence & Artifact Storage
+
+Canonical incident evidence is preserved under `incident-response/incidents/`:
+
+- **Q5 Synthetic Alert (`ResponderTest`)**: `incident-response/incidents/inc-20261006-002153-d6d6ae/`
+- **Q6 Real Production Alert (`express-1002`)**: `incident-response/incidents/inc-20261006-055456-14bbcd/`
+
+Each directory preserves:
+- `alert.json`: Raw Grafana alert webhook payload.
+- `evidence.json`: Correlated telemetry metadata and log snippets.
+- `trace.json`: Tempo distributed trace tree with exception stack trace.
+- `agent-prompt.txt`: Bounded prompt supplied to the assistant.
+- `agent-final.txt`: Complete assistant diagnostic response and root cause summary.
+- `metadata.json`: Invocation runtime parameters, execution duration, and exit codes.
+- `git-diff.txt`: Repository patch diff generated by the assistant.
+
+Future runtime incidents are ignored by default via `incident-response/incidents/.gitignore` to prevent repository artifact sprawl.
+
+---
+
+## Automated Tests
+
+Run the complete test suite with `uv`:
+```bash
+uv run pytest -v
+```
+
+The test suite covers:
+- Core API health checks and CRUD order operations.
+- Regression test for `express-1002` seeded order delivery calculation.
+- Parameterized edge case regression tests across 30-day, 31-day, leap February, non-leap February, and year-end boundaries.
+- Incident Responder security policy unit tests verifying default read-only enforcement and bypass disabling.
+
+---
+
+## Homework 4 Reference Answers
+
+| Question | Topic | Verified Answer |
 | :--- | :--- | :--- |
-| **Q1** | What does the health check return? | `{"status":"ok"}` |
-| **Q2** | Which HTTP status code does the metric record for the successful lookup? | `200` |
-| **Q3** | Which HTTP status code does the metric show in Grafana for the second lookup? | `404` |
-| **Q4** | What state does Grafana show for the 5xx alert? | `Normal` (or `Normal (NoData)`) |
-| **Q5** | What did the agent respond? Include the last line from its answer. | `Understood. I’ll investigate Order Tracker incidents, identify the cause, and report findings and remediation. This session has read-only filesystem access, so I can inspect the service but cannot apply changes.` |
-| **Q6** | What was the root cause of the incident? | **Option A**: *The express delivery date calculation tried to use a day that does not exist in that month.* |
-
----
-
-### Observability Pipeline Architecture
-
-The full telemetry stack is orchestrated via Docker Compose:
-
-1. **Instrumentation (`app/main.py`)**:
-   - OpenTelemetry Python SDK instrumented for traces, metrics, and structured logs.
-   - Pushes OTLP HTTP payloads to `http://otel-collector:4318`.
-   - Records `http_requests_total` counter with route and status code attributes.
-   - Propagates distributed trace context (`trace_id`, `span_id`) through logs and spans.
-2. **OpenTelemetry Collector (`otel-collector`)**:
-   - Receives OTLP traces, metrics, and logs on port 4318 (HTTP) and 4317 (gRPC).
-   - Exports metrics via Prometheus exporter on port 8889.
-   - Exports logs to Loki (`http://loki:3100/otlp`).
-   - Exports traces to Tempo (`http://tempo:4317`).
-3. **Storage & Engines**:
-   - **Prometheus** (`:9090`): Scrapes OpenTelemetry Collector every 15s.
-   - **Grafana Loki** (`:3100`): Ingests and indexes structured application logs.
-   - **Grafana Tempo** (`:3200`): Stores trace spans and dependency graphs.
-4. **Grafana Dashboards & Alerting (`:3000`)**:
-   - Provisioned Prometheus, Loki, and Tempo data sources with trace-to-logs and logs-to-traces correlation.
-   - Pre-provisioned `OrderTracker` dashboard.
-   - Alert Rule `OrderTracker5xxResponses` evaluating `http_requests_total{status_code=~"5.."}`.
-   - Notification policy directing alerts to the automated incident responder webhook (`http://host.docker.internal:8001/alerts`).
-
----
-
-### Incident Responder Architecture & Security Policy
-
-The automated incident responder is located in `incident-response/main.py` and listens on port 8001:
-
-- **Webhook Ingestion**: Exposes `POST /alerts` accepting Grafana alert webhooks.
-- **Evidence Gathering**: Queries Loki for recent log lines and Tempo for trace details matching the incident.
-- **Bounded Assistant Invocation**: Runs OpenAI Codex headlessly with strict execution boundaries:
-  - Ephemeral execution (`--ephemeral`), non-daemon mode (`--no-daemon`).
-  - Strict timeout (180 seconds).
-  - Explicit capture of exit codes, stdout, stderr, and working tree git diff.
-- **Security & Least-Privilege Policy Controls**:
-  - **Default Mode: Read-Only**: The responder operates by default in `read-only` sandbox mode (`-s read-only`), diagnosing root causes and proposing patch diffs without modifying files.
-  - **Explicit Write Gating**: Automated write remediation is strictly gated by `RESPONDER_ALLOW_WRITE_REMEDIATION=false` (default) and an allowlist of permitted alert names (`ALLOWED_WRITE_ALERTS`).
-  - **Dangerous Sandbox Bypass Disabled**: `RESPONDER_ALLOW_DANGEROUS_BYPASS=false` by default.
-  - **Platform Constraint Note**: On Windows platforms without OS-level container sandboxing (bubblewrap/cgroups), Codex CLI rejects headless file writes under `-s workspace-write` unless `--dangerously-bypass-approvals-and-sandbox` is supplied. Rather than retaining an unsafe bypass in production, the responder enforces safe read-only operation by default.
-  - **Workspace Isolation**: Execution is strictly pinned to `order-tracker`. External directories (e.g., TaskLane) are strictly isolated and inaccessible.
-  - **No Automatic Commit/Push**: Automatic commits or pushes to Git repositories are strictly prohibited.
-
----
-
-### Incident Investigation Summary (Question 6 Root Cause)
-
-- **Incident Trigger**: `GET /api/orders/express-1002` returned `HTTP 500 Internal Server Error`.
-- **Seeded Data**: Order `express-1002` was created with `created_at` set to the previous month's end date (e.g. September 30).
-- **Failure Mechanism**: In `app/main.py:123`, the delivery calculation was implemented as:
-  ```python
-  estimated_at = placed_at.replace(day=placed_at.day + 2)
-  ```
-  Adding `2` to the day integer on month-end dates attempted to construct an invalid date (e.g. day 32), raising `ValueError: day is out of range for month`.
-- **Remediation**:
-  ```python
-  estimated_at = placed_at + timedelta(days=2)
-  ```
-  Using `timedelta` safely rolls across calendar month and year boundaries.
-- **Verification**: Post-fix lookup of `express-1002` returned `HTTP 200 OK` with `estimated_delivery: "2026-10-02"`, pytest passed with 3/3 tests, and the Grafana alert returned to `Normal`.
+| **Q1** | Health Check Return Value | `{"status":"ok"}` |
+| **Q2** | Metric HTTP Status Code (First Lookup) | `200` |
+| **Q3** | Grafana Metric HTTP Status Code (Second Lookup) | `404` |
+| **Q4** | 5xx Alert State in Grafana | `Normal` (or `Normal (NoData)`) |
+| **Q5** | Agent Response (Exact Last Line) | `Understood. I’ll investigate Order Tracker incidents, identify the cause, and report findings and remediation. This session has read-only filesystem access, so I can inspect the service but cannot apply changes.` |
+| **Q6** | Root Cause of the Incident | **Option A**: *The express delivery date calculation tried to use a day that does not exist in that month.* |

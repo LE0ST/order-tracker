@@ -1,3 +1,0 @@
-Understood. I’ll investigate Order Tracker incidents, identify causes, and report findings. This session has read-only access, so I can inspect the workspace but cannot apply fixes.
-
-Send the incident alert or symptoms to begin.

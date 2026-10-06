@@ -1,0 +1,9 @@
+# Ignore all runtime incident directories by default to prevent artifact sprawl
+*
+# Allow this .gitignore file
+!.gitignore
+# Preserve canonical Homework 4 incident evidence
+!inc-20261006-002153-d6d6ae/
+!inc-20261006-002153-d6d6ae/**
+!inc-20261006-055456-14bbcd/
+!inc-20261006-055456-14bbcd/**
