@@ -1,0 +1,1 @@
+Understood. I’ll investigate Order Tracker incidents, assess their impact, and carry out authorized remediation. This session has read-only filesystem access, so I can inspect the service but cannot modify local files.

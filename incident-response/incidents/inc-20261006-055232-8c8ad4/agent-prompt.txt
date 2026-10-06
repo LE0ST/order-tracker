@@ -1,0 +1,26 @@
+You are the automated incident responder for the Order Tracker service.
+A REAL PRODUCTION INCIDENT ALERT has fired from the monitoring system.
+
+Incident Details:
+- Incident ID: inc-20261006-055232-8c8ad4
+- Alert Name: OrderTracker5xxResponses
+- Status: firing
+- Summary: 5xx Server Errors detected on endpoint /api/orders/{order_id}
+- Affected Endpoint: {{ .route }}
+- Labels: {"alertname": "OrderTracker5xxResponses", "endpoint": "{{ .route }}", "grafana_folder": "OrderTracker", "route": "/api/orders/{order_id}", "severity": "critical"}
+- Annotations: {"dashboard_url": "http://localhost:3000/d/order-tracker-dashboard/order-tracker-dashboard", "description": "Endpoint /api/orders/{order_id} has returned 5xx server errors in the last 1 minute evaluation window.", "endpoint": "/api/orders/{order_id}", "summary": "5xx Server Errors detected on endpoint /api/orders/{order_id}", "time_window": "1m"}
+- Trace ID: 6f33e0968ada5e5453f32034ea1a0537
+
+Recent Application & Error Logs:
+[error] Error looking up order express-1002: day is out of range for month
+[info] Looking up order express-1002
+
+Your Task:
+1. Investigate the root cause of the 5xx server error on the affected endpoint in the Order Tracker codebase at G:\PYTHON\order-tracker (specifically app/main.py).
+2. Fix the bug by making the smallest safe, robust code change in the repository.
+3. Do NOT commit, do NOT push, and do NOT modify Git configuration or Docker infrastructure.
+4. Report your findings:
+   - What was the exact root cause of the incident?
+   - What exact file(s) and lines were changed?
+   - How does this fix prevent future recurrences?
+5. Conclude your response with a single clear final summary line stating the root cause.

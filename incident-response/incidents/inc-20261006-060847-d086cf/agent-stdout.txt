@@ -1,0 +1,13 @@
+The unsafe calculation `placed_at.replace(day=placed_at.day + 2)` attempted to set an invalid day within the same month—for example, September 30 became September 32. This raised `ValueError: day is out of range for month`, causing the endpoint’s 500 response.
+
+The requested fix was already present in [app/main.py:123](G:/PYTHON/order-tracker/app/main.py:123):
+
+```python
+estimated_at = placed_at + timedelta(days=2)
+```
+
+This correctly rolls across month, year, and leap-year boundaries. No additional files or lines were changed during this response.
+
+Validation: all 3 existing tests passed; five date-boundary checks passed, and the original exception was reproduced. No commits, pushes, Git configuration changes, or Docker infrastructure changes were made.
+
+Root cause: express delivery calculation used `datetime.replace()` to create an invalid day at month boundaries.

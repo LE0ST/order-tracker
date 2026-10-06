@@ -1,0 +1,3 @@
+Understood. I’ll investigate Order Tracker incidents, identify the cause, and carry out authorized recovery steps. This session has read-only filesystem access, so local fixes will be limited to reviewable recommendations.
+
+Send the alert, symptoms, or incident details to begin.

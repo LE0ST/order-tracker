@@ -1,0 +1,42 @@
+{
+  "incident_id": "inc-20261006-055117-88e761",
+  "timestamp": "2026-10-06T05:51:21.837609+00:00",
+  "alert_name": "OrderTracker5xxResponses",
+  "status": "firing",
+  "is_test_alert": false,
+  "affected_endpoint": "{{ .route }}",
+  "labels": {
+    "alertname": "OrderTracker5xxResponses",
+    "endpoint": "{{ .route }}",
+    "grafana_folder": "OrderTracker",
+    "route": "/api/orders/{order_id}",
+    "severity": "critical"
+  },
+  "annotations": {
+    "dashboard_url": "http://localhost:3000/d/order-tracker-dashboard/order-tracker-dashboard",
+    "description": "Endpoint /api/orders/{order_id} has returned 5xx server errors in the last 1 minute evaluation window.",
+    "endpoint": "/api/orders/{order_id}",
+    "summary": "5xx Server Errors detected on endpoint /api/orders/{order_id}",
+    "time_window": "1m"
+  },
+  "summary": "5xx Server Errors detected on endpoint /api/orders/{order_id}",
+  "evidence_summary": "Real alert for endpoint: {{ .route }}",
+  "recent_logs": [
+    {
+      "timestamp_ns": "1791265605399514880",
+      "message": "Error looking up order express-1002: day is out of range for month",
+      "trace_id": "6f33e0968ada5e5453f32034ea1a0537",
+      "span_id": "cfef3fc7a11a0526",
+      "level": "error"
+    },
+    {
+      "timestamp_ns": "1791265605361010688",
+      "message": "Looking up order express-1002",
+      "trace_id": "6f33e0968ada5e5453f32034ea1a0537",
+      "span_id": "cfef3fc7a11a0526",
+      "level": "info"
+    }
+  ],
+  "trace_id": "6f33e0968ada5e5453f32034ea1a0537",
+  "has_trace_data": true
+}

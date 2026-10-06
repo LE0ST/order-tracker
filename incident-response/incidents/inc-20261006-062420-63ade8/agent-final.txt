@@ -1,0 +1,13 @@
+The required fix was already present in [app/main.py:123](/G:/PYTHON/order-tracker/app/main.py:123):
+
+```python
+estimated_at = placed_at + timedelta(days=2)
+```
+
+The Git diff shows this replaces `placed_at.replace(day=placed_at.day + 2)`. That expression creates an invalid day near month-end—for example, September 30 becomes September 32—raising `ValueError` and causing HTTP 500.
+
+`timedelta` safely rolls into the next month or year, including leap years, preventing this boundary error.
+
+Validation passed: all 3 existing tests, five date-boundary checks, and reproduction of the original exception. I made no additional file changes, commits, pushes, Git configuration changes, or Docker changes. Production recovery has not been verified.
+
+Root cause: Express delivery calculation used `datetime.replace` to create an invalid day beyond the end of the month.

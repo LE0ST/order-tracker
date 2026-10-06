@@ -1,0 +1,9 @@
+The requested fix was already present in [app/main.py:123](G:/PYTHON/order-tracker/app/main.py:123), so I made no additional edits.
+
+- **Root cause:** `placed_at.replace(day=placed_at.day + 2)` produced an invalid day at month end, raising `ValueError: day is out of range for month` and causing HTTP 500.
+- **Exact fix:** Line 123 uses `estimated_at = placed_at + timedelta(days=2)`, safely handling month, year, and leap-year boundaries.
+- **Verification:** Reproduced the original exception; all five boundary checks and all three existing tests passed.
+
+No commits, pushes, Git configuration changes, or Docker infrastructure changes were made. Production recovery has not been verified.
+
+Root cause: Express delivery calculation replaced the day with an invalid month-end value instead of adding two days with `timedelta`.

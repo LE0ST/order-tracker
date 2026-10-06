@@ -1,0 +1,13 @@
+The requested fix was already present in [app/main.py:123](G:/PYTHON/order-tracker/app/main.py:123):
+
+```python
+estimated_at = placed_at + timedelta(days=2)
+```
+
+The existing diff replaces `placed_at.replace(day=placed_at.day + 2)`. That expression creates invalid dates near month-end, raising `ValueError: day is out of range for month` and causing the endpoint to return 500.
+
+`timedelta` safely rolls across months, leap days, and years. Verification passed: 3 existing tests and 5 calendar-boundary cases; the original failure was reproduced.
+
+I made no additional file changes, commits, pushes, Git configuration changes, or Docker infrastructure changes.
+
+Root cause: Express delivery calculation incremented the day field without handling month boundaries, producing invalid dates and HTTP 500 errors.

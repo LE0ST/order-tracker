@@ -1,0 +1,3 @@
+Understood. I’ll investigate Order Tracker incidents, identify causes, and report findings. This session has read-only access, so I can inspect the service but cannot apply fixes.
+
+Send the alert, error, or symptoms to begin.

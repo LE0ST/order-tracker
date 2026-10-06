@@ -1,0 +1,1 @@
+Understood. Send the incident details, and I’ll investigate the Order Tracker service, assess the impact, and identify the fix. This session has read-only access, so I can inspect the workspace but cannot apply changes.

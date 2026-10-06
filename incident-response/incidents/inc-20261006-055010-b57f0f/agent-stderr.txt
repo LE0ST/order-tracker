@@ -1,0 +1,18 @@
+Reading additional input from stdin...
+OpenAI Codex v0.160.0
+--------
+workdir: G:\PYTHON\order-tracker
+model: gpt-6.1-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 01a10fc3-478e-72e3-bdf2-1bade516cad0
+--------
+user
+You are the automated incident responder for the Order Tracker service.
+codex
+Understood. Send the incident details, and I’ll investigate the Order Tracker service, assess the impact, and identify the fix. This session has read-only access, so I can inspect the workspace but cannot apply changes.
+tokens used
+185
